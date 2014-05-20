@@ -4,6 +4,44 @@
 import PyQt4 #instalacion via... sudo apt-get install python-qt4 sudo apt-get install libqt4-designer"""
 import sys
 from PyQt4 import QtGui
+import urllib2
+
+
+def loguearse(): #recibir access token
+    #username (varchar)
+    #name (varchar)
+    #bio (text)
+    #website (varchar)
+    #instagram_id   (int)
+    #instagram_acces_token  (varchar 200)
+
+    CLIENTID = "9119878932724a62af94b0725cd415f7"
+    CLIENTSECRET= "a8e0ad3201bc496187049e194c18614e"
+    REDIRECTURI = "http://neopixel.org"
+    WEBSITEURL= "http://neopixel.org"
+
+    try:
+        #response = urllib2.urlopen('https://instagram.com/oauth/authorize/?client_id='+CLIENTID+'&redirect_uri='+REDIRECTURI+'&response_type=token')
+        #print response.info()
+        #print response
+        #print response.geturl()
+        print "hola"
+        #html = response.read()
+        #print html
+        url = 'https://instagram.com/oauth/authorize/?client_id=9119878932724a62af94b0725cd415f7&redirect_uri=http://neopixel.org&response_type=token'
+        request = urllib2.Request(url)
+        response = urllib2.urlopen(request)
+        #extraer respuesta
+        html = response.read()
+        print html
+    except urllib2.HTTPError:
+        print "No se pudo redireccionar" #Ejemplo claro esta,...
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+        raise
+
+
+
 
 class Example(QtGui.QWidget): #clase que maneja la interfaz
     
@@ -36,18 +74,18 @@ class Example(QtGui.QWidget): #clase que maneja la interfaz
     
     
     
-	def loguearse(self):
-		print "holi"    
+
 
     
 
 
 def main():
     
-    app = QtGui.QApplication(sys.argv)
+    """app = QtGui.QApplication(sys.argv)
     ex = Example()
-    sys.exit(app.exec_())
+    sys.exit(app.exec_())"""
 
+    loguearse()
 
 if __name__ == '__main__':
     main()
