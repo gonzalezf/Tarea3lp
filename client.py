@@ -9,24 +9,35 @@ from ttk import Frame, Button, Style
 #Nuestro token global... por ahora lo obtendremos asi...
 token = "1320147380.b4a3796.86fc6de63606444e9e34e795a6793606"
 
-def ParseFeed():
+def ParseFeed(feed):
     #Hay que parsear lo que recibimos por medio de expresiones
     #regulares. Esto esta super complicado, peor que le token y me tomara mucho tiempo
-    p = re.compile("^(\"data\")")
-    lista = re.findall(p, "{\"data\": [{\"location\": {\"id\": \"833\"}}]}")
-    for i in lista:
-        print i
-    print "{\"data\": [{\"location\": {\"id\": \"833\"}}]}"
+    #Pregunte en stack overflow y dicen que es super complicado parsear haciendo uso
+    #de solo expresiones regulares. Hay que preguntarle bien al ayudante si es 100%
+    #necesario el uso de estas o sino habra que cranear esto mejor
+    p = re.compile('("data"):(.*)')
+    m = re.findall(p, feed)
+    print("First parse----")
+    print m[0][1]
+    print("Second parse----")
+    p = re.compile('"([A-Za-z0-9_\./\\-]*)":')
+    s = re.findall(p, m[0][1])
+    print s
 
 
+#Clase post: La idea es tener una lista de instancias de esta clase en
+#e ir iterando una a una a medida que el usuario pide mas paginas
+#Para poder probar esto es necesario realizar el parseo del objeto JSON
 class Post():
-    def __init__(self, author_id, author_name, desc, media_id):
+    def __init__(self, author_id, author_name, desc, img_url):
         self.author_id = author_id
         self.author_name = author_name
         self.desc = desc
         self.media_id = media_id
         self.comments = []
 
+#Ventana principal, la idea es tener un sidebar a la izquierda que se mantenga
+#igual, y solo variar el contenido de adentro.
 class MainWindow(Frame):
     #Esta es la ventana que contiene a todo, es similar al a tarea anterior
 
@@ -38,17 +49,19 @@ class MainWindow(Frame):
         #Dejamos la ventana Tk como maestra o root
         self.master = master
 
-        #Diseñamos un cavans en el cual podemos insertar o remove elementos
+        #Diseñamos un canvas en el cual podemos insertar o remover elementos
+        #Es como una especie de panel al que se le agregan distintos elementos
         self.canvas = Canvas(width = 700, height = 400)
 
         #Lista de objetos en el canvas (para poder borrarlos)
+        #Esta lista no incluye los elementos del sidebar!!
         self.objects = []
 
         #Dibujar!
-        self.Draw()
+        self.Initialize()
 
     #Dibujar
-    def Draw(self):
+    def Initialize(self):
         #Titulo de la ventana
         self.master.title("Instagram Application")
 
@@ -60,13 +73,20 @@ class MainWindow(Frame):
         #Añadimos el canvas al frame
         self.canvas.pack(fill=BOTH, expand=1)
 
-        #esto aun no funciona ven, la idea de esto es un scrollbar
+        #esto aun no funciona bien, la idea de esto es un scrollbar
         #que nos permita bajar para ver todos los comentarios. Aun no
         #esta listo!
-        self.scroll = Scrollbar(self,orient=VERTICAL)
-        self.scroll.pack(side=RIGHT,fill=Y)
+        self.scroll = Scrollbar(self, orient=VERTICAL)
+        self.scroll.pack(side=RIGHT, fill=Y)
         self.scroll.config(command=self.canvas.yview)
 
+        #Sidebar + Post de prueba, aca deberiamos realizar la llamada usando el API de instagram
+        #llenar una lista de posts y comenzar a iterar...
+        self.DrawSideBar()
+        self.DrawPost()
+
+    #Deberia ser llamado solo una vez
+    def DrawSideBar(self):
         #Linea que separa el side bar (izquierda) del contenido (derecha)
         self.canvas.create_line(200, 0, 200, 700)
 
@@ -86,10 +106,15 @@ class MainWindow(Frame):
         self.i2 = Button(text = "Seguidores", width = 23)
         self.i3 = Button(text = "Seguidos", width = 23)
         self.i4 = Button(text = "Buscar Personas", width = 23)
+        self.canvas.create_window(100, 200, window = self.i1)
+        self.canvas.create_window(100, 225, window = self.i2)
+        self.canvas.create_window(100, 250, window = self.i3)
+        self.canvas.create_window(100, 275, window = self.i4)
 
-        #Estos botones van en el lugar del post
-        self.back = Button(text = "Atras")
-        self.next = Button(text = "Siguiente", command = self.ClearPost)
+    #Deberia recibir un objeto de clase Post, pero por mientras
+    #solo lo haremos asi...
+    def DrawPost(self):
+        self.ClearContent()
 
         #Esto ya es una publicacion!!
         self.canvas.create_text(450, 15, text = "Este bloque corresponde a una publicacion")
@@ -99,19 +124,26 @@ class MainWindow(Frame):
         self.objects.append(self.canvas.create_line(350, 250, 550, 250))
         self.objects.append(self.canvas.create_line(550, 50, 550, 250))
         self.objects.append(self.canvas.create_line(350, 50, 350, 250))
+        self.objects.append(self.canvas.create_text(450, 300, text = "usuario1: genial la foto!\nusuario2: de donde la sacaste?\nusuario 3: buena buenaaa"))
+        #self.scrollb = Scrollbar(txt_frm, command=self.txt.yview)
+        #self.scrollb.grid(row=0, column=1, sticky='nsew')
+        #txt = Label
+        #txt['yscrollcommand'] = self.scrollb.set
 
-        self.objects.append(self.canvas.create_text(450, 300, text = "Aqui iran los comentarios de la gente"))
 
-        self.canvas.create_window(100, 200, window = self.i1)
-        self.canvas.create_window(100, 225, window = self.i2)
-        self.canvas.create_window(100, 250, window = self.i3)
-        self.canvas.create_window(100, 275, window = self.i4)
+        #Estos botones van en el lugar del post
+        self.back = Button(text = "Atras", command = self.DrawPost) #Aca deberiamos pasar algun Id de post o lo que sea
+        self.next = Button(text = "Siguiente", command = self.DrawPost)
         self.canvas.create_window(650, 375, window = self.next)
+        self.canvas.create_window(560, 375, window = self.back)
 
-    #def RefreshPost(self, post):
-    def ClearPost(self):
+    #Borrar los elementos del canvas para, generalmente, poner otros
+    #No borra los del sidebar
+    def ClearContent(self):
         for i in self.objects:
             self.canvas.delete(i)
+
+    #Morir!!
     def Exit(self):
         self.destroy()
 
@@ -197,10 +229,10 @@ class Example(QtGui.QWidget): #clase que maneja la interfaz
 
 
 def main():
-    ParseFeed()
-    #root = Tk()
-    #w = MainWindow(master = root)
-    #w.mainloop()
+    ParseFeed('{"data": [{ "comments": { "count": 16, "data": [ ... ]},"caption": null},{"comments": { "count": 5,"data": [ ... ]},"caption": null}]')
+    root = Tk()
+    w = MainWindow(master = root)
+    w.mainloop()
 
 
 if __name__ == '__main__':
