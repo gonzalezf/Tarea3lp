@@ -41,13 +41,37 @@ class MainWindow(Frame):
         #Dibujar!
         self.Initialize()
 
+    def ParseProfile(self):
+        request = "https://api.instagram.com/v1/users/"+profile_id+"?access_token="+token
+        response = urllib2.urlopen(request)
+        the_page = response.read()
+
+        #Leer el jason oe sixd
+        self.profile = {}
+        matchUser = re.search(r'"username":[^\n,}]*', the_page)
+        matchBio = re.search(r'"bio":[^\n,}]*', the_page)
+        matchWebsite = re.search(r'"website":[^\n,}]*', the_page)
+        matchPicture = re.search(r'"profile_picture":[^\n,}]*', the_page)
+        matchName = re.search(r'"full_name":[^\n,}]*', the_page)
+        matchMedia = re.search(r'"media":[^\n,}]*', the_page)
+        matchFollowedBy = re.search(r'"followed_by":[^\n,}]*', the_page)
+        matchFollows = re.search(r'"follows":[^\n,}]*', the_page)
+        self.profile['username'] = matchUser.group(0).split(':')[1][1:-1]
+        self.profile['username'] = matchUser.group(0).split(':')[1][1:-1]
+        self.profile['username'] = matchUser.group(0).split(':')[1][1:-1]
+        self.profile['username'] = matchUser.group(0).split(':')[1][1:-1]
+        self.profile['username'] = matchUser.group(0).split(':')[1][1:-1]
+        self.profile['username'] = matchUser.group(0).split(':')[1][1:-1]
+        self.profile['username'] = matchUser.group(0).split(':')[1][1:-1]
+        self.profile['username'] = matchUser.group(0).split(':')[1][1:-1]
+
     #Para expresiones regulares esta pagina es muy buena!
     #http://regexpal.com/
     def ParseFeed(self):
         #Con esto obtenemos la respuesta de instagram
         #query = "https://api.instagram.com/v1/users/"+profile_id+"/media/recent?access_token="+token
-        query = "https://api.instagram.com/v1/users/self/feed?access_token="+token
-        response = urllib2.urlopen(query)
+        request = "https://api.instagram.com/v1/users/self/feed?access_token="+token
+        response = urllib2.urlopen(request)
         the_page = response.read()
         self.feed = {}
 
@@ -140,6 +164,7 @@ class MainWindow(Frame):
         #llenar una lista de posts y comenzar a iterar...
         self.DrawSideBar()
         self.ParseFeed()
+        self.ParseProfile()
         self.DrawPost(0)
 
     #Deberia ser llamado solo una vez
@@ -159,14 +184,16 @@ class MainWindow(Frame):
         self.canvas.create_window(int(100*radio), int(375*radio), window = self.exit)
 
         #Creamos los botones del sidebar
-        self.i1 = Button(text = "Ver Perfil", width = int(23*radio))
-        self.i2 = Button(text = "Seguidores", width = int(23*radio))
-        self.i3 = Button(text = "Seguidos", width = int(23*radio))
-        self.i4 = Button(text = "Buscar Personas", width = int(23*radio))
+        self.i1 = Button(text = "Inicio", width = int(23*radio), command = lambda:self.DrawPost(0))
+        self.i2 = Button(text = "Ver Perfil", width = int(23*radio))
+        self.i3 = Button(text = "Seguidores", width = int(23*radio))
+        self.i4 = Button(text = "Seguidos", width = int(23*radio))
+        self.i5 = Button(text = "Buscar Personas", width = int(23*radio))
         self.canvas.create_window(int(100*radio), int(200*radio), window = self.i1)
         self.canvas.create_window(int(100*radio), int(225*radio), window = self.i2)
         self.canvas.create_window(int(100*radio), int(250*radio), window = self.i3)
         self.canvas.create_window(int(100*radio), int(275*radio), window = self.i4)
+        self.canvas.create_window(int(100*radio), int(300*radio), window = self.i5)
 
     #Deberia recibir un objeto de clase Post, pero por mientras
     #solo lo haremos asi...
@@ -178,7 +205,7 @@ class MainWindow(Frame):
         self.ClearContent()
 
         #Esto ya es una publicacion!!
-        self.canvas.create_text(int(450*radio), int(15*radio), text = "Este bloque corresponde a una publicacion")
+        self.objects.append(self.canvas.create_text(int(450*radio), int(15*radio), text = "Este bloque corresponde a una publicacion"))
         self.im = Image.open(self.feed['image_file'][post_id])
         self.im = self.im.resize((int(150*radio)    , int(150*radio)), Image.ANTIALIAS)
         self.tkimg = ImageTk.PhotoImage(self.im)
@@ -192,7 +219,7 @@ class MainWindow(Frame):
         for j in xrange(0, len(self.feed['comments'][post_id])):
             comments += self.feed['comments'][post_id][j][1]+": "+self.feed['comments'][post_id][j][0]+"\n"
 
-        tx = Label(text = comments, width = int(50*radio), height = int(7*radio), bg = "white")
+        tx = Label(text = comments, width = int(50*radio), height = int(7*radio), bg = "white", wraplength = 300*radio, relief = RIDGE)
         self.objects.append(self.canvas.create_window(int(450*radio), int(275*radio), window = tx))
         #s = Scrollbar(self, orient = VERTICAL)
         #s.pack(side = RIGHT, fill = Y)
