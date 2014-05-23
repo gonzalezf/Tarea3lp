@@ -10,6 +10,8 @@ from ttk import Frame, Button, Style
 token = "1320147380.b4a3796.86fc6de63606444e9e34e795a6793606"
 
 def ParseFeed():
+    #Hay que parsear lo que recibimos por medio de expresiones
+    #regulares. Esto esta super complicado, peor que le token y me tomara mucho tiempo
     p = re.compile("^(\"data\")")
     lista = re.findall(p, "{\"data\": [{\"location\": {\"id\": \"833\"}}]}")
     for i in lista:
@@ -26,35 +28,70 @@ class Post():
         self.comments = []
 
 class MainWindow(Frame):
+    #Esta es la ventana que contiene a todo, es similar al a tarea anterior
+
+    #Constructor
     def __init__(self, master=None):
+        #Inicializamos el frame
         Frame.__init__(self, master)
+
+        #Dejamos la ventana Tk como maestra o root
         self.master = master
+
+        #Diseñamos un cavans en el cual podemos insertar o remove elementos
         self.canvas = Canvas(width = 700, height = 400)
+
+        #Lista de objetos en el canvas (para poder borrarlos)
         self.objects = []
+
+        #Dibujar!
         self.Draw()
 
+    #Dibujar
     def Draw(self):
+        #Titulo de la ventana
         self.master.title("Instagram Application")
+
+        #El estilo se puede cambiar despues, por ahora lo dejaremos
+        #en gris (defecto)
         self.style = Style()
         self.style.theme_use("default")
+
+        #Añadimos el canvas al frame
         self.canvas.pack(fill=BOTH, expand=1)
+
+        #esto aun no funciona ven, la idea de esto es un scrollbar
+        #que nos permita bajar para ver todos los comentarios. Aun no
+        #esta listo!
         self.scroll = Scrollbar(self,orient=VERTICAL)
         self.scroll.pack(side=RIGHT,fill=Y)
         self.scroll.config(command=self.canvas.yview)
+
+        #Linea que separa el side bar (izquierda) del contenido (derecha)
         self.canvas.create_line(200, 0, 200, 700)
+
+        #Esto es solo temporal, una linea que simula en donde estara la foto de la persona
         self.canvas.create_line(50, 40, 150, 40)
         self.canvas.create_line(50, 140, 150, 140)
         self.canvas.create_line(150, 40, 150, 140)
         self.canvas.create_line(50, 40, 50, 140)
         self.canvas.create_text(100, 90, text = "foto")
+
+        #Creamos los botones para cerrar el programa, aun no funciona
         self.exit = Button(text = "Salir", command = self.Exit)
         self.canvas.create_window(100, 375, window = self.exit)
+
+        #Creamos los botones del sidebar
         self.i1 = Button(text = "Ver Perfil", width = 23)
         self.i2 = Button(text = "Seguidores", width = 23)
         self.i3 = Button(text = "Seguidos", width = 23)
         self.i4 = Button(text = "Buscar Personas", width = 23)
+
+        #Estos botones van en el lugar del post
         self.back = Button(text = "Atras")
         self.next = Button(text = "Siguiente", command = self.ClearPost)
+
+        #Esto ya es una publicacion!!
         self.canvas.create_text(450, 15, text = "Este bloque corresponde a una publicacion")
 
         self.objects.append(self.canvas.create_text(450, 150, text = "foto persona"))
