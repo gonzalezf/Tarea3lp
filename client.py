@@ -8,21 +8,53 @@ from ttk import Frame, Button, Style
 
 #Nuestro token global... por ahora lo obtendremos asi...
 token = "1320147380.b4a3796.86fc6de63606444e9e34e795a6793606"
+client_id = "b4a37965871b48f79e5365fa097f8e24"
+profile_id = "1320147380"
 
-def ParseFeed(feed):
-    #Hay que parsear lo que recibimos por medio de expresiones
-    #regulares. Esto esta super complicado, peor que le token y me tomara mucho tiempo
-    #Pregunte en stack overflow y dicen que es super complicado parsear haciendo uso
-    #de solo expresiones regulares. Hay que preguntarle bien al ayudante si es 100%
-    #necesario el uso de estas o sino habra que cranear esto mejor
-    p = re.compile('("data"):(.*)')
-    m = re.findall(p, feed)
-    print("First parse----")
-    print m[0][1]
-    print("Second parse----")
-    p = re.compile('"([A-Za-z0-9_\./\\-]*)":')
-    s = re.findall(p, m[0][1])
-    print s
+def ParseFeed():
+    query = "https://api.instagram.com/v1/users/"+profile_id+"/media/recent?access_token="+token
+    response = urllib2.urlopen(query)
+    the_page = response.read()
+    feed = {}
+    feed['images'] = []
+    feed['captions'] = []
+    feed['comments'] = []
+    matchImage = re.findall(r'"standard_resolution":{"url":"(.*?)"', the_page)
+    matchCaption = re.findall(r'"caption":(.*?),(.*?),', the_page)
+    matchComment = re.findall(r'"comments":(.*?)\]}', the_page)
+    if len(matchImage) > 0:
+        for x in xrange(0,len(matchImage)):
+            image = matchImage[x].replace('\\','')
+            if matchCaption[x][0] == 'null':
+                feed['images'].append(image)
+                feed['captions'].append('No Caption')
+            else:
+                caption = re.search(r'"text":"(.*?)"', matchCaption[x][1])
+                caption = caption.group(1).replace('\\','')
+                feed['images'].append(image)
+                feed['captions'].append(caption)
+
+            comment_list = []
+            print matchComment
+            matchCommentText = re.findall(r'"text":"(.*?)"', matchComment[x][0])
+            matchCommentUser = re.findall(r'"username":"(.*?)"', matchComment[x][0])
+            if len(matchCommentText) > 0:
+                for y in xrange(0, len(matchCommentText)):
+                    text = matchCommentText.group(1).replace('\\', '')
+                    user = matchCommentUser.group(1).replace('\\', '')
+                comment_list.append( (text, user) )
+            feed['comments'].append(comment_list)
+            '''
+    for i in xrange(0, len(feed['images'])):
+        print "---------------POST--------------------"
+        print feed['images'][i]
+        print feed['captions'][i]
+        print "----COMENTARIOS"
+        for j in xrange(0, len(feed['comments'][i])):
+            print feed['comments'][i][j][0]+": "+feed['comments'][i][j][1]
+            '''
+
+        
 
 
 #Clase post: La idea es tener una lista de instancias de esta clase en
@@ -229,10 +261,10 @@ class Example(QtGui.QWidget): #clase que maneja la interfaz
 
 
 def main():
-    ParseFeed('{"data": [{ "comments": { "count": 16, "data": [ ... ]},"caption": null},{"comments": { "count": 5,"data": [ ... ]},"caption": null}]')
-    root = Tk()
-    w = MainWindow(master = root)
-    w.mainloop()
+    ParseFeed()
+    #root = Tk()
+    #w = MainWindow(master = root)
+    #w.mainloop()
 
 
 if __name__ == '__main__':
