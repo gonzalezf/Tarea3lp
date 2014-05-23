@@ -38,10 +38,12 @@ class MainWindow(Frame):
         #Dibujar!
         self.Initialize()
 
-
+    #Para expresiones regulares esta pagina es muy buena!
+    #http://regexpal.com/
     def ParseFeed(self):
         #Con esto obtenemos la respuesta de instagram
-        query = "https://api.instagram.com/v1/users/"+profile_id+"/media/recent?access_token="+token
+        #query = "https://api.instagram.com/v1/users/"+profile_id+"/media/recent?access_token="+token
+        query = "https://api.instagram.com/v1/users/self/feed?access_token="+token
         response = urllib2.urlopen(query)
         the_page = response.read()
         self.feed = {}
@@ -54,16 +56,33 @@ class MainWindow(Frame):
         matchImage = re.findall(r'"low_resolution":{"url":"(.*?)"', the_page)
         matchCaption = re.findall(r'"caption":(.*?),(.*?),', the_page)
         matchComment = re.findall(r'"comments":(.*?)\]}', the_page)
+
+        #Buscar videos y eliminarlos de la lista
+        delete_list = []
+        if len(matchImage) > 0:
+            for x in xrange(0, len(matchImage)):
+                image = matchImage[x].replace('\\','')
+                s2 = image.split('.')
+                if(s2[len(s2)-1] == "mp4"):
+                    delete_list.append(x)
+        for d in delete_list:
+            del matchImage[d]
+
+        #Comenzar a obtener la informacion
         if len(matchImage) > 0:
             for x in xrange(0,len(matchImage)):
                 image = matchImage[x].replace('\\','')
+                
                 #Descargo la imagen
                 s = image.split('/')
                 image_file = s[len(s)-1]
+               
                 print image_file
                 if not os.path.exists("img"):
                     os.makedirs("img")
                 urllib.urlretrieve(image, "img/"+image_file)
+
+
                 self.feed['image_file'].append(image_file)
 
 
@@ -157,7 +176,6 @@ class MainWindow(Frame):
         #Esto ya es una publicacion!!
         self.canvas.create_text(450, 15, text = "Este bloque corresponde a una publicacion")
         im = Image.open("img/"+self.feed['image_file'][post_id])
-        print "opening...;img/"+self.feed['image_file'][post_id]
         tkimg = ImageTk.PhotoImage(im)
 
         self.objects.append(self.canvas.create_image(0, 10, image=tkimg))
