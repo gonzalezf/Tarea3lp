@@ -60,6 +60,7 @@ class MainWindow(Frame):
         matchImage = re.findall(r'"profile_picture"[^,}]*', the_page)
         matchId = re.findall(r'"id"[^,}]*', the_page)
         self.followers['pictures'].append('NULL')
+        self.followers['ids'].append('NULL')
         if len(matchImage) > 0:
             for x in xrange(0,len(matchImage)):
                 image = matchImage[x].replace('\\','').split(':', 1)[1][1:-1]
@@ -78,7 +79,7 @@ class MainWindow(Frame):
                 print matchId[x].split(':', 1)[1][1:-1].replace('\\','')
 
     def ParseFollowing(self):
-        request = "https://api.instagram.com/v1/users/"+profile_id+"/followed-by?access_token="+token
+        request = "https://api.instagram.com/v1/users/"+profile_id+"/follows?access_token="+token
         response = urllib2.urlopen(request)
         the_page = response.read()
 
@@ -88,6 +89,7 @@ class MainWindow(Frame):
         matchImage = re.findall(r'"profile_picture"[^,}]*', the_page)
         matchId = re.findall(r'"id"[^,}]*', the_page)
         self.following['pictures'].append('NULL')
+        self.following['ids'].append('NULL')
         if len(matchImage) > 0:
             for x in xrange(0,len(matchImage)):
                 image = matchImage[x].replace('\\','').replace('\\','').split(':', 1)[1][1:-1]
@@ -311,14 +313,15 @@ class MainWindow(Frame):
 
 
                 self.feed['image_file'].append(image_file)
+                caption = re.search(r'"text":"(.*?)"', matchCaption[x][1])
 
 
-                if matchCaption[x][0] == 'null':
+                if matchCaption[x][0] == 'null' or caption == None:
                     self.feed['images'].append(image)
                     self.feed['captions'].append('')
                 else:
-                    caption = re.search(r'"text":"(.*?)"', matchCaption[x][1])
-                    caption = caption.group(1).replace('\\','')
+                    
+                    caption = caption.group().replace('\\','')
                     self.feed['images'].append(image)
                     self.feed['captions'].append(caption)
 
@@ -371,29 +374,39 @@ class MainWindow(Frame):
             self.ParseFollowers()
         self.ClearContent()
 
-        pages = (len(self.followers['pictures'])/8)+1
+        pages = (len(self.followers['pictures'])/12)+1
         if(page > pages):
             page = pages
         print pages
         x = 230
         y = 30
-        elements_per_page = 16
+        elements_per_page = 12
         self.view_profile_im = []
         self.view_profile_tkimg = []
         #Imagen por imagen
         for i in range(1, elements_per_page+1):
-            if(i+elements_per_page*(page-1)-1 >= len(self.followers['pictures'])):
+            if(i+elements_per_page*(page-1) >= len(self.followers['pictures'])):
                 break
             print "img/"+self.followers['pictures'][i+elements_per_page*(page-1)]
             self.view_profile_im.append(Image.open("img/"+self.followers['pictures'][i+elements_per_page*(page-1)]))
             self.view_profile_im[i-1] = self.view_profile_im[i-1].resize((int(70*radio) , int(70*radio)), Image.ANTIALIAS)
             self.view_profile_tkimg.append(ImageTk.PhotoImage(self.view_profile_im[i-1]))
             self.objects.append(self.canvas.create_image(int(x*radio), int(y*radio), image=self.view_profile_tkimg[i-1], anchor = NW))
+            btn = Button(text = "Ver Perfil", command = self.DrawOtherProfile_CB(self.followers['ids'][i+elements_per_page*(page-1)], 1))
+            self.objects.append(self.canvas.create_window(int((x+35)*radio), int(y+80)*radio, window=btn))
             x += 110
             if(i % 4 == 0):
                 x = 230
-                y += 75
+                y += 105
+        if(page > 1):
+            self.back = Button(text = "Atras", command = lambda: self.DrawFollowers(page-1)) #Aca deberiamos pasar algun Id de post o lo que sea
+            self.objects.append(self.canvas.create_window(int(560*radio), int(375*radio), window = self.back))
+        if page < pages:
+            self.next = Button(text = "Siguiente", command = lambda: self.DrawFollowers(page+1))
+            self.objects.append(self.canvas.create_window(int(650*radio), int(375*radio), window = self.next))
 
+    def DrawOtherProfile_CB(self, profile, page):
+        return lambda:self.DrawOtherProfile(profile, page);
 
     def DrawFollowing(self, page):
         if(page == 1):
@@ -401,28 +414,38 @@ class MainWindow(Frame):
 
         self.ClearContent()
 
-        pages = (len(self.following['pictures'])/8)+1
+        pages = (len(self.following['pictures'])/12)+1
         if(page > pages):
             page = pages
         print pages
         x = 230
         y = 30
-        elements_per_page = 16
+        elements_per_page = 12
         self.view_profile_im = []
         self.view_profile_tkimg = []
         #Imagen por imagen
         for i in range(1, elements_per_page+1):
-            if(i+elements_per_page*(page-1)-1 >= len(self.following['pictures'])):
+            if(i+elements_per_page*(page-1) >= len(self.following['pictures'])):
                 break
             print "img/"+self.following['pictures'][i+elements_per_page*(page-1)]
             self.view_profile_im.append(Image.open("img/"+self.following['pictures'][i+elements_per_page*(page-1)]))
             self.view_profile_im[i-1] = self.view_profile_im[i-1].resize((int(70*radio) , int(70*radio)), Image.ANTIALIAS)
             self.view_profile_tkimg.append(ImageTk.PhotoImage(self.view_profile_im[i-1]))
             self.objects.append(self.canvas.create_image(int(x*radio), int(y*radio), image=self.view_profile_tkimg[i-1], anchor = NW))
+            print str(i+elements_per_page*(page-1)) +"|"+ str(len(self.following['ids']))+"|"+str(len(self.following['pictures']))
+            btn = Button(text = "Ver Perfil", command = self.DrawOtherProfile_CB(self.following['ids'][i+elements_per_page*(page-1)], 1))
+            self.objects.append(self.canvas.create_window(int((x+35)*radio), int(y+80)*radio, window=btn))
             x += 110
             if(i % 4 == 0):
                 x = 230
-                y += 75
+                y += 105
+        if(page > 1):
+            self.back = Button(text = "Atras", command = lambda: self.DrawFollowing(page-1)) #Aca deberiamos pasar algun Id de post o lo que sea
+            self.objects.append(self.canvas.create_window(int(560*radio), int(375*radio), window = self.back))
+        if page < pages:
+            self.next = Button(text = "Siguiente", command = lambda: self.DrawFollowing(page+1))
+            self.objects.append(self.canvas.create_window(int(650*radio), int(375*radio), window = self.next))
+
 
 
     #Deberia ser llamado solo una vez
@@ -517,6 +540,7 @@ class MainWindow(Frame):
                 y += 110
 
     def DrawOtherProfile(self, profile, page):
+        print "reached: "+profile
         if(profile == OUR_PROFILE_ID):
             self.DrawOwnProfile(1)
             return
