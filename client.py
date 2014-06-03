@@ -11,9 +11,8 @@ import os
 from PIL import Image, ImageTk
 
 #Nuestro token global... por ahora lo obtendremos asi...
-token = "1320147380.b4a3796.86fc6de63606444e9e34e795a6793606"
+#token = "1320147380.b4a3796.86fc6de63606444e9e34e795a6793606"
 client_id = "b4a37965871b48f79e5365fa097f8e24"
-profile_id = "1320147380"
 
 OUR_PROFILE_ID = "1320147380"
 
@@ -32,6 +31,7 @@ class MainWindow(Frame):
 
         #Dejamos la ventana Tk como maestra o root
         self.master = master
+        self.token = 'invalid'
 
         #Diseñamos un canvas en el cual podemos insertar o remover elementos
         #Es como una especie de panel al que se le agregan distintos elementos
@@ -45,12 +45,61 @@ class MainWindow(Frame):
         self.feed = {}
         self.following = {}
         self.followers = {}
+        self.search_reply = {}
 
         #Dibujar!
         self.Initialize()
 
+
+    def OnFollowButton(self, profile):
+        action = ""
+        if(self.view_profile['is_followed'] == 'none'):
+            action = "follow"
+        else:
+            action = "unfollow"
+        request = "https://api.instagram.com/v1/users/"+profile+"/relationship"
+        data = urllib.urlencode({"action": action, "access_token": self.token})
+        response = urllib.urlopen(request, data)
+        the_page = response.read()
+        self.DrawOtherProfile(profile, 1)
+
+    def ParseSearch(self, name):
+        request = "https://api.instagram.com/v1/users/search?q="+name+"&access_token="+self.token
+        print request
+        response = urllib2.urlopen(request)
+        the_page = response.read()
+
+        self.search_reply['pictures'] = []
+        self.search_reply['ids'] = []
+        self.search_reply['names'] = []
+        matchImage = re.findall(r'"profile_picture"[^,}]*', the_page)
+        matchId = re.findall(r'"id"[^,}]*', the_page)
+        matchName = re.findall(r'"username"[^,}]*', the_page)
+        self.search_reply['pictures'].append('NULL')
+        self.search_reply['ids'].append('NULL')
+        self.search_reply['names'].append('NULL')
+        if len(matchImage) > 0:
+            for x in xrange(0,len(matchImage)):
+                image = matchImage[x].replace('\\','').split(':', 1)[1][1:-1]
+                
+                #Descargo la imagen
+                s = image.split('/')
+                image_file = s[len(s)-1]
+                
+                if not os.path.exists("img"):
+                    os.makedirs("img")
+                if(not os.path.isfile("img/"+image_file)):
+                    urllib.urlretrieve(image, "img/"+image_file)
+                self.search_reply['pictures'].append(image_file)
+                print image_file
+                self.search_reply['ids'].append(matchId[x].split(':', 1)[1][1:-1].replace('\\',''))
+                self.search_reply['names'].append(matchName[x].split(':', 1)[1][1:-1].replace('\\',''))
+                print matchId[x].split(':', 1)[1][1:-1].replace('\\','')
+
+
+
     def ParseFollowers(self):
-        request = "https://api.instagram.com/v1/users/"+profile_id+"/followed-by?access_token="+token
+        request = "https://api.instagram.com/v1/users/"+OUR_PROFILE_ID+"/followed-by?access_token="+self.token
         response = urllib2.urlopen(request)
         the_page = response.read()
 
@@ -79,7 +128,7 @@ class MainWindow(Frame):
                 print matchId[x].split(':', 1)[1][1:-1].replace('\\','')
 
     def ParseFollowing(self):
-        request = "https://api.instagram.com/v1/users/"+profile_id+"/follows?access_token="+token
+        request = "https://api.instagram.com/v1/users/"+OUR_PROFILE_ID+"/follows?access_token="+self.token
         response = urllib2.urlopen(request)
         the_page = response.read()
 
@@ -113,7 +162,7 @@ class MainWindow(Frame):
 
 
     def ParseProfile(self):
-        request = "https://api.instagram.com/v1/users/"+profile_id+"?access_token="+token
+        request = "https://api.instagram.com/v1/users/"+OUR_PROFILE_ID+"?access_token="+self.token
         response = urllib2.urlopen(request)
         the_page = response.read()
 
@@ -146,7 +195,7 @@ class MainWindow(Frame):
         self.profile['follows'] = matchFollows.group(0).split(':', 1)[1]
 
     def ParseOtherProfile(self, profile):
-        request = "https://api.instagram.com/v1/users/"+profile+"?access_token="+token
+        request = "https://api.instagram.com/v1/users/"+profile+"?access_token="+self.token
         response = urllib2.urlopen(request)
         the_page = response.read()
 
@@ -159,6 +208,7 @@ class MainWindow(Frame):
         matchMedia = re.search(r'"media":[^\n,}]*', the_page)
         matchFollowedBy = re.search(r'"followed_by":[^\n,}]*', the_page)
         matchFollows = re.search(r'"follows":[^\n,}]*', the_page)
+        self.view_profile['profile_id'] = profile
         self.view_profile['username'] = matchUser.group(0).split(':', 1)[1][1:-1].replace('\\','')
         self.view_profile['bio'] = matchBio.group(0).split(':', 1)[1][1:-1].replace('\\','')
         self.view_profile['website'] = matchWebsite.group(0).split(':', 1)[1][1:-1].replace('\\','')
@@ -176,10 +226,16 @@ class MainWindow(Frame):
         self.view_profile['media'] = matchMedia.group(0).split(':', 1)[1]
         self.view_profile['followed_by'] = matchFollowedBy.group(0).split(':', 1)[1]
         self.view_profile['follows'] = matchFollows.group(0).split(':', 1)[1]
+        request = "https://api.instagram.com/v1/users/"+profile+"/relationship?access_token="+self.token
+        response = urllib2.urlopen(request)
+        the_page = response.read()
+
+        matchRelationship = re.search(r'"outgoing_status":[^\n,}]*', the_page)
+        self.view_profile['is_followed'] = matchRelationship.group(0).split(':', 1)[1][1:-1].replace('\\','')
 
 
     def ParseOwnRecentPhotos(self):
-        request = "https://api.instagram.com/v1/users/"+profile_id+"/media/recent?access_token="+token
+        request = "https://api.instagram.com/v1/users/"+OUR_PROFILE_ID+"/media/recent?access_token="+self.token
         response = urllib2.urlopen(request)
         the_page = response.read()
 
@@ -220,7 +276,7 @@ class MainWindow(Frame):
                 self.view_profile['images'].append(image_file)
 
     def ParseOtherRecentPhotos(self, profile):
-        request = "https://api.instagram.com/v1/users/"+profile+"/media/recent?access_token="+token
+        request = "https://api.instagram.com/v1/users/"+profile+"/media/recent?access_token="+self.token
         response = urllib2.urlopen(request)
         the_page = response.read()
         #Guardaremos aqui las cosas
@@ -265,8 +321,8 @@ class MainWindow(Frame):
     #http://regexpal.com/
     def ParseFeed(self):
         #Con esto obtenemos la respuesta de instagram
-        #query = "https://api.instagram.com/v1/users/"+profile_id+"/media/recent?access_token="+token
-        request = "https://api.instagram.com/v1/users/self/feed?access_token="+token
+        #query = "https://api.instagram.com/v1/users/"+OUR_PROFILE_ID+"/media/recent?access_token="+token
+        request = "https://api.instagram.com/v1/users/self/feed?access_token="+self.token
         response = urllib2.urlopen(request)
         the_page = response.read()
         self.feed = {}
@@ -362,8 +418,21 @@ class MainWindow(Frame):
         self.scroll.pack(side=RIGHT, fill=Y)
         self.scroll.config(command=self.canvas.yview)
 
+        
+        self.GetToken()
+
+    def GetToken(self):
+        self.token_entry = Entry(width = int(60*radio))
+        self.token_button = Button(text = "Ingresar", command = lambda:self.OnTokenObtained())
+        self.objects.append(self.canvas.create_window(int(350*radio), int(100*radio), window = self.token_entry))
+        self.objects.append(self.canvas.create_window(int(350*radio), int(120*radio), window = self.token_button))
+        self.objects.append(self.canvas.create_text(int(350*radio), int(80*radio), text = "Ingrese el token"))
+
+    def OnTokenObtained(self):
         #Sidebar + Post de prueba, aca deberiamos realizar la llamada usando el API de instagram
         #llenar una lista de posts y comenzar a iterar...
+        self.token = self.token_entry.get()
+        print "Cargando..."
         self.ParseFeed()
         self.ParseProfile()
         self.DrawSideBar()
@@ -446,6 +515,56 @@ class MainWindow(Frame):
             self.next = Button(text = "Siguiente", command = lambda: self.DrawFollowing(page+1))
             self.objects.append(self.canvas.create_window(int(650*radio), int(375*radio), window = self.next))
 
+    def DrawSearchInput(self):
+        self.ClearContent();
+        self.search_entry = Entry()
+        self.objects.append(self.canvas.create_window(int(450*radio), int(40*radio), window = self.search_entry))
+        self.objects.append(self.canvas.create_text(int(450*radio), int(20*radio), text = "Ingrese nombre: "))
+        self.search_button = Button(text = "Buscar", command = lambda: self.DrawSearchReply(1, True))
+        self.objects.append(self.canvas.create_window(int(450*radio), int(60*radio), window = self.search_button))
+
+    def DrawSearchReply(self, page, parse):
+        if(parse == True):
+            self.ParseSearch(self.search_entry.get())
+        self.ClearContent();
+        self.search_entry = Entry()
+        self.objects.append(self.canvas.create_window(int(450*radio), int(40*radio), window = self.search_entry))
+        self.objects.append(self.canvas.create_text(int(450*radio), int(20*radio), text = "Ingrese nombre: "))
+        self.search_button = Button(text = "Buscar", command = lambda: self.DrawSearchReply(1, True))
+        self.objects.append(self.canvas.create_window(int(450*radio), int(60*radio), window = self.search_button))
+        
+        pages = (len(self.search_reply['pictures'])/8)+1
+        if(page > pages):
+            page = pages
+        print pages
+        x = 230
+        y = 100
+        elements_per_page = 8
+        self.view_profile_im = []
+        self.view_profile_tkimg = []
+        #Imagen por imagen
+        for i in range(1, elements_per_page+1):
+            if(i+elements_per_page*(page-1) >= len(self.search_reply['pictures'])):
+                break
+            print "img/"+self.search_reply['pictures'][i+elements_per_page*(page-1)]
+            self.view_profile_im.append(Image.open("img/"+self.search_reply['pictures'][i+elements_per_page*(page-1)]))
+            self.view_profile_im[i-1] = self.view_profile_im[i-1].resize((int(70*radio) , int(70*radio)), Image.ANTIALIAS)
+            self.view_profile_tkimg.append(ImageTk.PhotoImage(self.view_profile_im[i-1]))
+            self.objects.append(self.canvas.create_image(int(x*radio), int(y*radio), image=self.view_profile_tkimg[i-1], anchor = NW))
+            btn = Button(text = "Ver Perfil", command = self.DrawOtherProfile_CB(self.search_reply['ids'][i+elements_per_page*(page-1)], 1))
+            self.objects.append(self.canvas.create_text(int((x+35)*radio), int((y+80)*radio), text = self.search_reply['names'][i+elements_per_page*(page-1)]))
+            self.objects.append(self.canvas.create_window(int((x+35)*radio), int(y+100)*radio, window=btn))
+            x += 110
+            if(i % 4 == 0):
+                x = 230
+                y += 120
+        if(page > 1):
+            self.back = Button(text = "Atras", command = lambda: self.DrawSearchReply(page-1)) #Aca deberiamos pasar algun Id de post o lo que sea
+            self.objects.append(self.canvas.create_window(int(560*radio), int(375*radio), window = self.back))
+        if page < pages:
+            self.next = Button(text = "Siguiente", command = lambda: self.DrawSearchReply(page+1))
+            self.objects.append(self.canvas.create_window(int(650*radio), int(375*radio), window = self.next))
+
 
 
     #Deberia ser llamado solo una vez
@@ -473,7 +592,7 @@ class MainWindow(Frame):
         self.i2 = Button(text = "Ver Perfil", width = int(23*radio), command = lambda:self.DrawOwnProfile(1))
         self.i3 = Button(text = "Seguidores", width = int(23*radio), command = lambda:self.DrawFollowers(1))
         self.i4 = Button(text = "A los que sigo", width = int(23*radio), command = lambda:self.DrawFollowing(1))
-        self.i5 = Button(text = "Buscar Personas", width = int(23*radio))
+        self.i5 = Button(text = "Buscar Personas", width = int(23*radio), command = lambda:self.DrawSearchInput())
         self.canvas.create_window(int(100*radio), int(200*radio), window = self.i1)
         self.canvas.create_window(int(100*radio), int(225*radio), window = self.i2)
         self.canvas.create_window(int(100*radio), int(250*radio), window = self.i3)
@@ -539,8 +658,10 @@ class MainWindow(Frame):
                 x = 230
                 y += 110
 
+    
+
+
     def DrawOtherProfile(self, profile, page):
-        print "reached: "+profile
         if(profile == OUR_PROFILE_ID):
             self.DrawOwnProfile(1)
             return
@@ -579,7 +700,14 @@ class MainWindow(Frame):
         print pages
         x = 230
         y = 120
-        self.follow_button = Button(text = "Seguir")
+        print self.view_profile['is_followed'] == 'follows'
+        if self.view_profile['is_followed'] == 'follows':
+            self.follow_button = Button(text = "Unfollow", command = lambda:self.OnFollowButton(self.view_profile['profile_id']))
+        elif self.view_profile['is_followed'] == 'requested':
+            self.follow_button = Button(text = "Unrequest", command = lambda: self.OnFollowButton(self.view_profile['profile_id']))
+        else:
+            self.follow_button = Button(text = "Follow", command = lambda: self.OnFollowButton(self.view_profile['profile_id']))
+        self.objects.append(self.canvas.create_window(int(600*radio), int(80*radio), window = self.follow_button))
         if(page > 1):
             self.back = Button(text = "Atras", command = lambda: self.DrawOtherProfile(profile, page-1)) #Aca deberiamos pasar algun Id de post o lo que sea
             self.objects.append(self.canvas.create_window(int(560*radio), int(375*radio), window = self.back))
@@ -707,7 +835,9 @@ def loguearse(): #recibir access token
         #1320147380.b4a3796.86fc6de63606444e9e34e795a6793606
         url = 'https://instagram.com/oauth/authorize/?client_id=b4a37965871b48f79e5365fa097f8e24&redirect_uri=http://neopixel.org&response_type=token'
         request = urllib2.Request(url)
+        print request
         response = urllib2.urlopen(request)
+        print response
         #extraer respuesta
         html = response.read()
         print html
